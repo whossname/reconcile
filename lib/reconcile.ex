@@ -1,9 +1,5 @@
 defmodule Reconcile do
-  @callback initial_reconcile_value() ::
-              {:ok, state :: term()}
-              | {:ok, state :: term(), timeout() | :hibernate | {:continue, term()}}
-              | :ignore
-              | {:stop, reason :: any()}
+  @callback initial_reconcile_value() :: {:ok, state :: term()}
 
   @callback reconcile(reconcile_value :: any(), reconcile_value :: any()) ::
               {:error, String.t()} | {:ok, records :: list()}
