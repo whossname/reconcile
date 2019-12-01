@@ -2,7 +2,7 @@ defmodule CountReconcileTest do
   use ExUnit.Case
 
   defmodule CountSub do
-    use Reconcile, reconcile_key: :number, server: :count, topic: "*"
+    use Reconcile, reconcile_key: :number, server: :count
 
     def init_reconcile_value() do
       {:ok, 0}
@@ -32,18 +32,19 @@ defmodule CountReconcileTest do
   end
 
   test "it can count" do
+    topic = "*"
     Phoenix.PubSub.PG2.start_link(:count, [])
-    CountSub.start_link()
+    CountSub.start_link(topic)
 
     # without reconcile
-    Phoenix.PubSub.broadcast(:count, "*", {0, %{number: 1}})
+    Phoenix.PubSub.broadcast(:count, topic, {0, %{number: 1}})
     check_recieve([%{number: 1}])
 
-    Phoenix.PubSub.broadcast(:count, "*", {1, %{number: 2}})
+    Phoenix.PubSub.broadcast(:count, topic, {1, %{number: 2}})
     check_recieve([%{number: 2}])
 
     # with reconcile
-    Phoenix.PubSub.broadcast(:count, "*", {9, %{number: 10}})
+    Phoenix.PubSub.broadcast(:count, topic, {9, %{number: 10}})
 
     check_recieve([
       %{number: 3},

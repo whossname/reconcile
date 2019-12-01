@@ -2,7 +2,7 @@ defmodule TimeReconcileTest do
   use ExUnit.Case
 
   defmodule TimeSub do
-    use Reconcile, reconcile_key: :timestamp, server: :time, topic: "*"
+    use Reconcile, reconcile_key: :timestamp, server: :time
 
     def init_reconcile_value() do
       start =
@@ -53,8 +53,9 @@ defmodule TimeReconcileTest do
   end
 
   test "time reconcile" do
+    topic = "*"
     Phoenix.PubSub.PG2.start_link(:time, [])
-    TimeSub.start_link()
+    TimeSub.start_link(topic)
 
     t0 =
       NaiveDateTime.utc_now()
@@ -67,15 +68,15 @@ defmodule TimeReconcileTest do
     t5 = NaiveDateTime.add(t0, 5)
 
     # prep
-    Phoenix.PubSub.broadcast(:time, "*", {t0, %{timestamp: t1}})
+    Phoenix.PubSub.broadcast(:time, topic, {t0, %{timestamp: t1}})
     check_recieve_min_length(9)
 
     # without reconcile
-    Phoenix.PubSub.broadcast(:time, "*", {t1, %{timestamp: t2}})
+    Phoenix.PubSub.broadcast(:time, topic, {t1, %{timestamp: t2}})
     check_recieve([%{timestamp: t2}])
 
     # with reconcile
-    Phoenix.PubSub.broadcast(:time, "*", {t4, %{timestamp: t5}})
+    Phoenix.PubSub.broadcast(:time, topic, {t4, %{timestamp: t5}})
     check_recieve([%{timestamp: t3}, %{timestamp: t4}, %{timestamp: t5}])
   end
 

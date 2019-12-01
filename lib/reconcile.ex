@@ -10,7 +10,7 @@ defmodule Reconcile do
 
   @callback handle_reconciled(records :: list()) :: any()
 
-  defmacro __using__(reconcile_key: key, server: server, topic: topic) do
+  defmacro __using__(reconcile_key: key, server: server) do
     quote do
       def process_id(server, topic), do: {__MODULE__, server, topic}
 
@@ -19,9 +19,8 @@ defmodule Reconcile do
       end
 
       # start up
-      def start_link() do
+      def start_link(topic) do
         server = unquote(server)
-        topic = unquote(topic)
         key = unquote(key)
 
         GenServer.start_link(
