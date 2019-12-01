@@ -4,9 +4,7 @@ defmodule CountReconcileTest do
   defmodule CountSub do
     use Reconcile, reconcile_key: :number, server: :count
 
-    def init_reconcile_value() do
-      {:ok, 0}
-    end
+    def init_reconcile_value(nil), do: 0
 
     def reconcile(new_value, old_value) do
       if new_value < old_value do

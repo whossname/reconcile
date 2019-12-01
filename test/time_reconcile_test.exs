@@ -4,13 +4,10 @@ defmodule TimeReconcileTest do
   defmodule TimeSub do
     use Reconcile, reconcile_key: :timestamp, server: :time
 
-    def init_reconcile_value() do
-      start =
-        NaiveDateTime.utc_now()
-        |> NaiveDateTime.truncate(:second)
-        |> NaiveDateTime.add(-10)
-
-      {:ok, start}
+    def init_reconcile_value(nil) do
+      NaiveDateTime.utc_now()
+      |> NaiveDateTime.truncate(:second)
+      |> NaiveDateTime.add(-10)
     end
 
     defp build_times(times, last_time) do

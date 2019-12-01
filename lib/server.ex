@@ -1,13 +1,14 @@
 defmodule Reconcile.Server do
   use GenServer
 
-  def init({server, topic, module, key}) do
+  # start up
+  def init({server, topic, module, key, seed}) do
     Phoenix.PubSub.subscribe(server, topic)
-    {:ok, {module, key}, {:continue, :continue}}
+    {:ok, {module, key, seed}, {:continue, :continue}}
   end
 
-  def handle_continue(:continue, {module, key}) do
-    {:ok, reconcile_value} = apply(module, :init_reconcile_value, [])
+  def handle_continue(:continue, {module, key, seed}) do
+    reconcile_value = apply(module, :init_reconcile_value, [seed])
     state = {reconcile_value, module, key}
     {:noreply, state}
   end

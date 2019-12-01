@@ -15,13 +15,13 @@ defmodule Reconcile do
       end
 
       # start up
-      def start_link(topic) do
+      def start_link(topic, seed \\ nil) do
         server = unquote(server)
         key = unquote(key)
 
         GenServer.start_link(
           Reconcile.Server,
-          {server, topic, __MODULE__, key},
+          {server, topic, __MODULE__, key, seed},
           name: via_tuple(server, topic)
         )
       end
