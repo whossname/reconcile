@@ -9,32 +9,57 @@ defmodule Reconcile.Server do
 
   def handle_continue(:continue, {module, key, opts}) do
     reconcile_value = apply(module, :init_reconcile_value, [opts])
-    state = {reconcile_value, module, key, opts}
+    state = %{reconcile_value: reconcile_value, module: module, key: key, opts: opts}
     {:noreply, state}
   end
 
   # runtime
-  defp set_state(record, module, key, opts) do
-    reconcile_value = Map.get(record, key)
-    state = {reconcile_value, module, key, opts}
+  defp set_state(record, state) do
+    reconcile_value = Map.get(record, state.key)
+    state = Map.put(state, :reconcile_value, reconcile_value)
     {:noreply, state}
   end
 
-  def handle_info({reconcile_value, record}, {reconcile_value, module, key, opts}) do
-    apply(module, :handle_reconciled, [[record], opts])
-
-    set_state(record, module, key, opts)
+  defp callback(records, state) do
+    apply(state.module, :callback, [records, state.opts])
   end
 
-  def handle_info({new_reconcile_value, record}, {old_reconcile_value, module, key, opts}) do
-    apply(module, :reconcile, [new_reconcile_value, old_reconcile_value, opts])
-    |> case do
-      {:ok, records} ->
-        apply(module, :handle_reconciled, [records ++ [record], opts])
-        set_state(record, module, key, opts)
+  defp should_reconcile?(reconcile_value, state) do
+    apply(state.module, :should_reconcile?, [reconcile_value, state.reconcile_value, state.opts])
+  end
 
-      {:error, reason} ->
-        throw(reason)
+  def handle_info({reconcile_value, record}, %{reconcile_value: reconcile_value} = state) do
+    callback([record], state)
+    set_state(record, state)
+  end
+
+  def handle_info({reconcile_value, record}, state) do
+    if should_reconcile?(reconcile_value, state) do
+      reconcile_to = Map.get(record, state.key)
+
+      apply(state.module, :reconcile, [
+        reconcile_to,
+        state.reconcile_value,
+        state.opts
+      ])
+      |> case do
+        {:ok, records} ->
+          last = List.last(records)
+
+          callback(records, state)
+
+          if Map.get(last, state.key) != reconcile_to do
+            send(self(), {reconcile_value, record})
+            set_state(last, state)
+          else
+            set_state(record, state)
+          end
+
+        {:error, reason} ->
+          throw(reason)
+      end
+    else
+      {:noreply, state}
     end
   end
 end

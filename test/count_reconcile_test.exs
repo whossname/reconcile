@@ -4,22 +4,28 @@ defmodule CountReconcileTest do
   defmodule CountSub do
     use Reconcile, reconcile_key: :number, server: :count
 
-    def init_reconcile_value([]), do: 0
+    def init_reconcile_value(_), do: 0
 
-    def reconcile(new_value, old_value, []) do
-      if new_value < old_value do
-        {:error, "expect reconcile value to increase"}
-      else
-        records =
-          (old_value + 1)..new_value
-          |> Enum.to_list()
-          |> Enum.map(&%{number: &1})
-
-        {:ok, records}
-      end
+    def should_reconcile?(new_value, old_value, _) do
+      new_value > old_value
     end
 
-    def handle_reconciled(numbers, []) do
+    def reconcile(new_value, old_value, [count: :slow]) do
+      records = [%{number: old_value + 1}]
+
+      {:ok, records}
+    end
+
+    def reconcile(new_value, old_value, _) do
+      records =
+        (old_value + 1)..new_value
+        |> Enum.to_list()
+        |> Enum.map(&%{number: &1})
+
+      {:ok, records}
+    end
+
+    def callback(numbers, _) do
       pid =
         Process.get()
         |> Keyword.fetch!(:"$ancestors")
@@ -41,6 +47,9 @@ defmodule CountReconcileTest do
     Phoenix.PubSub.broadcast(:count, topic, {1, %{number: 2}})
     check_recieve([%{number: 2}])
 
+    # no reconcile
+    Phoenix.PubSub.broadcast(:count, topic, {0, %{number: 1}})
+
     # with reconcile
     Phoenix.PubSub.broadcast(:count, topic, {9, %{number: 10}})
 
@@ -54,20 +63,25 @@ defmodule CountReconcileTest do
       %{number: 9},
       %{number: 10}
     ])
-  end
 
-  test "two can count" do
+    # many can count
     topic1 = "1"
     topic2 = "2"
-    Phoenix.PubSub.PG2.start_link(:count, [])
     CountSub.start_link(topic1)
     CountSub.start_link(topic2)
 
     Phoenix.PubSub.broadcast(:count, topic1, {0, %{number: 1}})
-    check_recieve([%{number: 1}])
-
     Phoenix.PubSub.broadcast(:count, topic2, {0, %{number: 1}})
     check_recieve([%{number: 1}])
+    check_recieve([%{number: 1}])
+
+    # can batch reconcile
+    topic3 = "3"
+    CountSub.start_link(topic3, count: :slow)
+    Phoenix.PubSub.broadcast(:count, topic3, {2, %{number: 3}})
+    check_recieve([%{number: 1}])
+    check_recieve([%{number: 2}])
+    check_recieve([%{number: 3}])
   end
 
   defp check_recieve(val) do

@@ -22,24 +22,24 @@ defmodule TimeReconcileTest do
       end
     end
 
-    def reconcile(new_value, old_value, []) do
-      if NaiveDateTime.diff(new_value, old_value) < 0 do
-        {:error, "expect time to increase"}
-      else
-        records =
-          [old_value]
-          |> build_times(new_value)
-          |> Enum.map(&%{timestamp: &1})
-          # must be ascending
-          |> Enum.reverse()
-
-        [_old_value | records] = records
-
-        {:ok, records}
-      end
+    def should_reconcile?(new_value, old_value, []) do
+      NaiveDateTime.diff(new_value, old_value) > 0
     end
 
-    def handle_reconciled(times, []) do
+    def reconcile(new_value, old_value, []) do
+      records =
+        [old_value]
+        |> build_times(new_value)
+        |> Enum.map(&%{timestamp: &1})
+        # must be ascending
+        |> Enum.reverse()
+
+      [_old_value | records] = records
+
+      {:ok, records}
+    end
+
+    def callback(times, []) do
       pid =
         Process.get()
         |> Keyword.fetch!(:"$ancestors")
@@ -68,11 +68,14 @@ defmodule TimeReconcileTest do
     Phoenix.PubSub.broadcast(:time, topic, {t0, %{timestamp: t1}})
     check_recieve_min_length(9)
 
-    # without reconcile
+    # pass through
     Phoenix.PubSub.broadcast(:time, topic, {t1, %{timestamp: t2}})
     check_recieve([%{timestamp: t2}])
 
-    # with reconcile
+    # no reconcile
+    Phoenix.PubSub.broadcast(:time, topic, {t1, %{timestamp: t2}})
+
+    # reconcile
     Phoenix.PubSub.broadcast(:time, topic, {t4, %{timestamp: t5}})
     check_recieve([%{timestamp: t3}, %{timestamp: t4}, %{timestamp: t5}])
   end
