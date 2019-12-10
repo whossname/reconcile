@@ -4,9 +4,9 @@ defmodule CountReconcileTest do
   defmodule CountSub do
     use Reconcile, reconcile_key: :number, server: :count
 
-    def init_reconcile_value(nil), do: 0
+    def init_reconcile_value([]), do: 0
 
-    def reconcile(new_value, old_value) do
+    def reconcile(new_value, old_value, []) do
       if new_value < old_value do
         {:error, "expect reconcile value to increase"}
       else
@@ -19,7 +19,7 @@ defmodule CountReconcileTest do
       end
     end
 
-    def handle_reconciled(numbers) do
+    def handle_reconciled(numbers, []) do
       pid =
         Process.get()
         |> Keyword.fetch!(:"$ancestors")
@@ -54,6 +54,20 @@ defmodule CountReconcileTest do
       %{number: 9},
       %{number: 10}
     ])
+  end
+
+  test "two can count" do
+    topic1 = "1"
+    topic2 = "2"
+    Phoenix.PubSub.PG2.start_link(:count, [])
+    CountSub.start_link(topic1)
+    CountSub.start_link(topic2)
+
+    Phoenix.PubSub.broadcast(:count, topic1, {0, %{number: 1}})
+    check_recieve([%{number: 1}])
+
+    Phoenix.PubSub.broadcast(:count, topic2, {0, %{number: 1}})
+    check_recieve([%{number: 1}])
   end
 
   defp check_recieve(val) do

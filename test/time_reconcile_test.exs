@@ -4,7 +4,7 @@ defmodule TimeReconcileTest do
   defmodule TimeSub do
     use Reconcile, reconcile_key: :timestamp, server: :time
 
-    def init_reconcile_value(nil) do
+    def init_reconcile_value([]) do
       NaiveDateTime.utc_now()
       |> NaiveDateTime.truncate(:second)
       |> NaiveDateTime.add(-10)
@@ -22,7 +22,7 @@ defmodule TimeReconcileTest do
       end
     end
 
-    def reconcile(new_value, old_value) do
+    def reconcile(new_value, old_value, []) do
       if NaiveDateTime.diff(new_value, old_value) < 0 do
         {:error, "expect time to increase"}
       else
@@ -39,7 +39,7 @@ defmodule TimeReconcileTest do
       end
     end
 
-    def handle_reconciled(times) do
+    def handle_reconciled(times, []) do
       pid =
         Process.get()
         |> Keyword.fetch!(:"$ancestors")
@@ -52,7 +52,7 @@ defmodule TimeReconcileTest do
   test "time reconcile" do
     topic = "*"
     Phoenix.PubSub.PG2.start_link(:time, [])
-    TimeSub.start_link(topic)
+    TimeSub.start_link(topic, [])
 
     t0 =
       NaiveDateTime.utc_now()
