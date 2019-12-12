@@ -9,7 +9,7 @@ defmodule Reconcile.Server do
 
   def handle_continue(:continue, {module, key, opts}) do
     reconcile_value = apply(module, :init_reconcile_value, [opts])
-    state = %{reconcile_value: reconcile_value, module: module, key: key, opts: opts}
+    state = %{reconcile_value: reconcile_value, module: module, key: key, opts: opts, acc: nil}
     {:noreply, state}
   end
 
@@ -21,7 +21,8 @@ defmodule Reconcile.Server do
   end
 
   defp callback(records, state) do
-    apply(state.module, :callback, [records, state.opts])
+    acc = apply(state.module, :callback, [state.acc, records, state.opts])
+    Map.put(state, :acc, acc)
   end
 
   defp should_reconcile?(reconcile_value, state) do
@@ -29,7 +30,7 @@ defmodule Reconcile.Server do
   end
 
   def handle_info({reconcile_value, record}, %{reconcile_value: reconcile_value} = state) do
-    callback([record], state)
+    state = callback([record], state)
     set_state(record, state)
   end
 

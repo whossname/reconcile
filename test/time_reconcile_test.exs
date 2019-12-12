@@ -39,7 +39,7 @@ defmodule TimeReconcileTest do
       {:ok, records}
     end
 
-    def callback(times, []) do
+    def callback(_, times, []) do
       pid =
         Process.get()
         |> Keyword.fetch!(:"$ancestors")

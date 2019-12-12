@@ -25,7 +25,7 @@ defmodule CountReconcileTest do
       {:ok, records}
     end
 
-    def callback(numbers, _) do
+    def callback(_, numbers, _) do
       pid =
         Process.get()
         |> Keyword.fetch!(:"$ancestors")
